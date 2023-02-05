@@ -12,7 +12,6 @@ loader.load().then((google) => {
 	autocomplete = new google.maps.places.Autocomplete(
 		document.querySelector('#addressInput input'),
 		{
-			types: ['address',],
 			componentRestrictions: { 'country': ['US',], },
 			fields: ['name', 'place_id',],
 		}
