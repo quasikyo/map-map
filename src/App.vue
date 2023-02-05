@@ -1,4 +1,6 @@
 <script setup>
+import CreateIncidentForm from './components/CreateIncidentForm.vue';
+
 import {
 	NConfigProvider, darkTheme,
 	NMessageProvider,
@@ -47,7 +49,7 @@ const loader = new Loader({
 
 				<n-layout-content>
 					<div id="map" style="width: 400px; height: 400px;"></div>
-					<router-view />
+					<create-incident-form />
 				</n-layout-content>
 			</n-layout>
 
