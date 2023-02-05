@@ -5,10 +5,12 @@ import { ref } from 'vue';
 import { supabase } from '../lib/supabase';
 import { loader } from '../lib/maps';
 
+import { categories } from './IncidentCategories';
+
 let autocomplete;
 loader.load().then((google) => {
 	autocomplete = new google.maps.places.Autocomplete(
-		document.querySelector('#locationInput input'),
+		document.querySelector('#addressInput input'),
 		{
 			types: ['address',],
 			componentRestrictions: { 'country': ['US',], },
@@ -18,17 +20,17 @@ loader.load().then((google) => {
 });
 
 const message = useMessage();
-
 const incidentForm = ref(null);
-const incidentCategories = [
-	{ label: 'Theft', value: 'theft', },
-	{ label: 'Tresspassing', value: 'tresspassing', },
-	{ label: 'Environmental', value: 'environmental', },
-];
+const incidentCategories = categories.map((category) => {
+	return {
+		label: category,
+		value: category,
+	};
+});
 const incidentValueDefaults = {
 	title: '',
 	description: '',
-	location: '',
+	address: '',
 	category: null,
 };
 const incidentValues = ref({ ...incidentValueDefaults, });
@@ -39,7 +41,7 @@ const formRules = {
 		trigger: 'blur',
 	},
 	description: {},
-	location: {
+	address: {
 		required: true,
 		message: 'Please provide a location.',
 		trigger: 'blur',
@@ -52,7 +54,7 @@ const formRules = {
 };
 
 function createIncident() {
-	incidentValues.value.location = document.querySelector('.pac-target-input').value;
+	incidentValues.value.address = document.querySelector('.pac-target-input').value;
 	incidentForm.value?.validate((errors) => {
 		if (!errors) {
 			submitIncident();
@@ -63,7 +65,7 @@ function createIncident() {
 async function submitIncident() {
 	const { error, } = await supabase.from('incidents').insert({
 		...incidentValues.value,
-		location: autocomplete.getPlace().place_id,
+		map_code: autocomplete.getPlace().place_id,
 	});
 	if (error) {
 		message.error(error.message);
@@ -71,8 +73,6 @@ async function submitIncident() {
 		message.success('Incident successfully created!');
 		incidentValues.value = { ...incidentValueDefaults, };
 	} // if
-
-
 } // submitIncident
 </script>
 
@@ -89,8 +89,8 @@ async function submitIncident() {
 		<n-form-item label="Description" path="description">
 			<n-input v-model:value="incidentValues.description" />
 		</n-form-item>
-		<n-form-item label="Location" path="location" required>
-			<n-input id="locationInput" v-model:value="incidentValues.location" />
+		<n-form-item label="Address" path="address" required>
+			<n-input id="addressInput" v-model:value="incidentValues.address" />
 		</n-form-item>
 		<n-form-item label="Category" path="category" required="">
 			<n-select v-model:value="incidentValues.category" :options="incidentCategories" />

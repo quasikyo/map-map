@@ -14,11 +14,14 @@ import CreateIncidentForm from './components/CreateIncidentForm.vue';
 import { supabase } from './lib/supabase';
 import { loader } from './lib/maps';
 
+import { categoryWeights } from './components/IncidentCategories';
+
 const geocodeURL = new URL(
 	'https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyBwV5Dq3vISSQZcR_kF52CdExTc10mYDzU'
 );
 const heatmapData = ref([]);
 const heatmapLayer = ref(null);
+const infoWindow = ref(null);
 
 loader.load().then(async (google) => {
 	const athensGA = { lat: 33.9442545, lng: -83.4593333, };
@@ -26,6 +29,7 @@ loader.load().then(async (google) => {
 		zoom: 12,
 		center: athensGA,
 	});
+	infoWindow.value = new google.maps.InfoWindow();
 
 	const { data, } = await supabase.from('incidents').select('*');
 	data.forEach((incident) => addToMap(google, map, incident));
@@ -35,12 +39,17 @@ async function addToMap(google, map, incident) {
 	const rawCoordinates = await getCoordinatesFor(incident);
 	const coordinates = new google.maps.LatLng(rawCoordinates.lat, rawCoordinates.lng);
 
-	new google.maps.Marker({
+	const marker = new google.maps.Marker({
 		position: coordinates,
 		map,
 	});
+	marker.addListener('click', () => {
+		infoWindow.value.close();
+		infoWindow.value.setContent(getIncidentReport(incident));
+		infoWindow.value.open(marker.map, marker);
+	});
 
-	heatmapData.value.push({ location: coordinates, weight: 1, });
+	heatmapData.value.push({ location: coordinates, weight: categoryWeights[incident.category], });
 	heatmapLayer.value = new google.maps.visualization.HeatmapLayer({
 		data: heatmapData.value,
 		map,
@@ -48,15 +57,28 @@ async function addToMap(google, map, incident) {
 	});
 } // addToMap
 
-
-
 async function getCoordinatesFor(incident) {
-	geocodeURL.searchParams.set('place_id', incident.location);
+	geocodeURL.searchParams.set('place_id', incident.map_code);
 	const response = await fetch(geocodeURL);
 	const data = await response.json();
 	const coordinates = data.results[0].geometry.location;
 	return coordinates;
 } // getCoordinates
+
+function getIncidentReport(incident) {
+	const reportedAt = new Date(incident.created_at);
+
+	let report = `<h4>${incident.title}</h4>`;
+	report += '<br />' + incident.category;
+	report += '<br />' + reportedAt.toDateString() + '<br />' + reportedAt.toTimeString();
+	report += '<br />' + incident.address;
+
+	if (incident?.description) {
+		report += '<br /><br />' + incident.description;
+	} // if
+
+	return report;
+} // getIncidentReport
 </script>
 
 <template>
@@ -84,6 +106,8 @@ async function getCoordinatesFor(incident) {
 	</n-config-provider>
 </template>
 
-<style scoped>
-
+<style>
+.gm-style-iw-d {
+	color: black;
+}
 </style>
