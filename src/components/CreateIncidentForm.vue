@@ -1,40 +1,60 @@
 <script setup>
-import { NForm, NFormItem, NInput, NButton, useMessage } from 'naive-ui';
+import { NForm, NFormItem, NInput, NButton, NSelect, useMessage } from 'naive-ui';
 import { ref } from 'vue';
+
+import { supabase } from '../supabase';
 
 const message = useMessage();
 
 const incidentForm = ref(null);
-const incidentValues = ref({
+const incidentCategories = [
+	{ label: 'Theft', value: 'theft', },
+	{ label: 'Tresspassing', value: 'tresspassing', },
+	{ label: 'Environmental', value: 'environmental', },
+];
+const incidentValueDefaults = {
 	title: '',
 	description: '',
 	location: '',
-});
+	category: null,
+};
+const incidentValues = ref({ ...incidentValueDefaults, });
 const formRules = {
 	title: {
 		required: true,
 		message: 'Please provide a title.',
 		trigger: 'blur',
 	},
-	description: {
-
-	},
+	description: {},
 	location: {
 		required: true,
 		message: 'Please provide a location.',
+		trigger: 'blur',
+	},
+	category: {
+		required: true,
+		message: 'Please select a category.',
 		trigger: 'blur',
 	},
 };
 
 function createIncident() {
 	incidentForm.value?.validate((errors) => {
-		if (errors) {
-			message.error('Invalid values provided.');
+		if (!errors) {
+			submitIncident();
 		} // if
-
-		// TODO: submit incident
 	});
-}
+} // createIncident
+
+async function submitIncident() {
+	const { error, } = await supabase.from('incidents').insert(incidentValues.value);
+	if (error) {
+		message.error(error.message);
+	} else {
+		message.success('Incident successfully created!');
+		incidentValues.value = { ...incidentValueDefaults, };
+	} // if
+} // submitIncident
 
 </script>
 
@@ -54,6 +74,9 @@ function createIncident() {
 		</n-form-item>
 		<n-form-item label="Location" path="location" required>
 			<n-input v-model:value="incidentValues.location" />
+		</n-form-item>
+		<n-form-item label="Category" path="category" required="">
+			<n-select v-model:value="incidentValues.category" :options="incidentCategories" />
 		</n-form-item>
 
 		<n-form-item>
