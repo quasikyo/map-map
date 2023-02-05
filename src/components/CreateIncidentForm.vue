@@ -2,7 +2,20 @@
 import { NForm, NFormItem, NInput, NButton, NSelect, useMessage } from 'naive-ui';
 import { ref } from 'vue';
 
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
+import { loader } from '../lib/maps';
+
+let autocomplete;
+loader.load().then((google) => {
+	autocomplete = new google.maps.places.Autocomplete(
+		document.querySelector('#locationInput input'),
+		{
+			types: ['address',],
+			componentRestrictions: { 'country': ['US',], },
+			fields: ['name', 'place_id',],
+		}
+	);
+});
 
 const message = useMessage();
 
@@ -39,6 +52,7 @@ const formRules = {
 };
 
 function createIncident() {
+	incidentValues.value.location = document.querySelector('.pac-target-input').value;
 	incidentForm.value?.validate((errors) => {
 		if (!errors) {
 			submitIncident();
@@ -47,25 +61,28 @@ function createIncident() {
 } // createIncident
 
 async function submitIncident() {
-	const { error, } = await supabase.from('incidents').insert(incidentValues.value);
+	const { error, } = await supabase.from('incidents').insert({
+		...incidentValues.value,
+		location: autocomplete.getPlace().place_id,
+	});
 	if (error) {
 		message.error(error.message);
 	} else {
 		message.success('Incident successfully created!');
 		incidentValues.value = { ...incidentValueDefaults, };
 	} // if
-} // submitIncident
 
+
+} // submitIncident
 </script>
 
-
-
 <template>
-	<header>
+	<header style="height: 5vh; width: 60%; margin: auto;">
 		<h2>Create New Incident</h2>
 	</header>
 
-	<n-form size="large" :model="incidentValues" :rules="formRules" ref="incidentForm">
+	<n-form size="large" :model="incidentValues" :rules="formRules" ref="incidentForm"
+		style="height: 35vh; width: 60%; margin: auto;">
 		<n-form-item label="Title" path="title" required>
 			<n-input v-model:value="incidentValues.title" />
 		</n-form-item>
@@ -73,14 +90,14 @@ async function submitIncident() {
 			<n-input v-model:value="incidentValues.description" />
 		</n-form-item>
 		<n-form-item label="Location" path="location" required>
-			<n-input v-model:value="incidentValues.location" />
+			<n-input id="locationInput" v-model:value="incidentValues.location" />
 		</n-form-item>
 		<n-form-item label="Category" path="category" required="">
 			<n-select v-model:value="incidentValues.category" :options="incidentCategories" />
 		</n-form-item>
 
 		<n-form-item>
-			<n-button @click="createIncident">Create</n-button>
+			<n-button type="primary" @click="createIncident">Create</n-button>
 		</n-form-item>
 	</n-form>
 </template>
